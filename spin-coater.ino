@@ -3,6 +3,7 @@
 #include<LiquidCrystal_I2C.h>
 #include<Servo.h>
 
+
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 const byte numRows= 4;
 const byte numCols= 4;
@@ -13,16 +14,16 @@ char keymap[numRows][numCols]=
   {'7', '8', '9', 'C'},
   {'*', '0', '#', 'D'}
 };
+
+
 byte rowPins[numRows] = {9,8,7,6};
 byte colPins[numCols]= {5,4,3,2};
 Keypad keypad= Keypad(makeKeymap(keymap), rowPins, colPins, numRows, numCols);
 Servo motor;
 
-byte ledPin = 13; 
-boolean blink = false;
-boolean ledPin_state;
 
 int value = 10;
+
 
 typedef struct 
 {
@@ -32,11 +33,22 @@ typedef struct
 }Stage;
 Stage stage[10];
 
+void start_slow(int val)
+{
+    val = map(val, 0, 7200, 30, 180);
+    for(int i=0; i<val; i+=2)
+    {
+      motor.write(val);
+      delay(100);
+    }
+}
+
 void Run(int val)
 {
-  val = map(val, 0, 1023, 0, 180);
+  val = map(val, 0, 7200, 30, 180);
   motor.write(val);
 }
+
 
 int getNumber()
 {
@@ -59,6 +71,9 @@ int getNumber()
     }
     return atoi(num);
 }
+
+
+
 void Show()
 {
      lcd.print("Spin Coater");
@@ -69,13 +84,14 @@ void Show()
 }
 
 
+
 void takeInput(int i)
 {
    lcd.clear();
    lcd.setCursor(4,1);
    lcd.print("Stage ");
    lcd.print(i);
-   delay(1000);
+   delay(1500);
    
    if(i>1)
    {
@@ -92,9 +108,9 @@ void takeInput(int i)
    }
    
     lcd.clear();
-    lcd.print("Enter speed ");
+    lcd.print("Enter RPM ");
     lcd.setCursor(0,1);
-    lcd.print("between(100 to 800)");
+    lcd.print("between(100 to 7000)");
     lcd.setCursor(0,2);
     lcd.print("for stage ");
     lcd.print(i);
@@ -109,6 +125,8 @@ void takeInput(int i)
     stage[i].Time = getNumber()*1000;
 }
 
+
+
 void Execute(int i)
 {
   if(stage > 1)
@@ -122,10 +140,13 @@ void Execute(int i)
   lcd.clear();
   lcd.print("Running stage ");
   lcd.print(i);
+  start_slow(stage[i].Speed);
   Run(stage[i].Speed);
   delay(stage[i].Time);
   Run(0);
 }
+
+
 
 void Start()
 {
@@ -154,14 +175,36 @@ void Start()
         delay(1000);
     } 
 }
+
+void maintener()
+{
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("Maintenance by:");
+  lcd.setCursor(0,1);
+  lcd.print("Dr. Md Abdul Majed");
+  lcd.setCursor(0,2);
+  lcd.print("Associate Professor");
+  lcd.setCursor(0,3);
+  lcd.print("Dept of Chemistry");
+}
+
+void developer()
+{
+  lcd.clear();
+  lcd.setCursor(1,0);
+  lcd.print("Developed by:");
+  lcd.setCursor(0,1);
+  lcd.print("Shanjit Mondol(Phy10");
+  lcd.setCursor(0,2);
+  lcd.print("Jewel Nath (ICT-13)");
+  lcd.setCursor(0,3);
+  lcd.print("Comilla University"); 
+}
 void setup()
 {
      Serial.begin(9600);
-     
-     pinMode(ledPin, OUTPUT);              
-     digitalWrite(ledPin, HIGH);           
-     ledPin_state = digitalRead(ledPin);
-     
+          
      motor.attach(10,1000,2000);
      motor.write(0);
      
@@ -176,9 +219,19 @@ void loop()
     lcd.clear();
     Show();
     
-    Start();
     
+    Start();
+    maintener();
+    delay(5000);
+    developer();
+    while(1)
+    {
+      char key = keypad.waitForKey();
+      if(key == 'D')
+        break;
+    }
 }
+
 
 void keypadEvent(KeypadEvent key)
 {
@@ -187,18 +240,19 @@ void keypadEvent(KeypadEvent key)
     case PRESSED:
         if (key == 'A') 
         {
-            digitalWrite(ledPin,!digitalRead(ledPin));
-            ledPin_state = digitalRead(ledPin);        
+           if(value < 180)
+              value += 5;
+           motor.write(value);        
         }
         if(key == 'B')
         {
-           if(value < 180)
-              value += 5;
+           if(value > 0)
+              value -= 5;
            motor.write(value);
         }
         if (key == 'C')
         {
-           Run(0);
+            motor.write(0);
         }
         if (key == '#')
         {
